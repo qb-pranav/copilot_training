@@ -13,6 +13,8 @@ async function openPlaywrightDocs(options = {}) {
   };
 
   let browser = null;
+  let context = null;
+  let page = null;
   
   try {
     // Validate URL
@@ -27,10 +29,10 @@ async function openPlaywrightDocs(options = {}) {
     });
     
     // Create a new context with timeout settings
-    const context = await browser.newContext();
+    context = await browser.newContext();
     
     // Create a new page with timeout
-    const page = await context.newPage();
+    page = await context.newPage();
     page.setDefaultTimeout(config.timeout);
     
     console.log(`Navigating to ${config.url}...`);
@@ -57,13 +59,13 @@ async function openPlaywrightDocs(options = {}) {
     }
     console.log('✓ Assertion passed: Page title contains "Playwright"');
     
-    // Take a screenshot for demo
-    await page.screenshot({ path: config.screenshotPath });
-    console.log(`✓ Screenshot saved as ${config.screenshotPath}`);
-    
     // Wait for main content to be visible
     console.log('Waiting for main content...');
     await page.waitForLoadState('domcontentloaded');
+    
+    // Take a screenshot for demo (after content has loaded)
+    await page.screenshot({ path: config.screenshotPath });
+    console.log(`✓ Screenshot saved as ${config.screenshotPath}`);
     
     // Get page content statistics
     const headings = await page.locator('h1').allTextContents();
@@ -111,10 +113,16 @@ async function openPlaywrightDocs(options = {}) {
     process.exitCode = 1;
     return { success: false, error: error.message };
   } finally {
-    // Close the browser safely
+    // Close the browser and related resources safely (in reverse order)
+    if (page) {
+      await page.close();
+    }
+    if (context) {
+      await context.close();
+    }
     if (browser) {
       await browser.close();
-      console.log('✓ Browser closed');
+      console.log('✓ Browser and resources closed');
     }
   }
 }
