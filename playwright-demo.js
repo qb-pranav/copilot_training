@@ -2,9 +2,35 @@
 // Purpose: Opens and demonstrates Playwright documentation page
 
 const { chromium } = require('playwright');
+const fs = require('fs');
+const path = require('path');
 
-async function openPlaywrightDocs(options = {}) {
-  // Configuration with defaults
+function parseCliArgs(argv = []) {
+  const options = {};
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+
+    if (arg === '--headed') {
+      options.headless = false;
+    } else if (arg === '--headless') {
+      options.headless = true;
+    } else if (arg === '--url' && argv[i + 1]) {
+      options.url = argv[i + 1];
+      i += 1;
+    } else if (arg === '--timeout' && argv[i + 1]) {
+      options.timeout = Number(argv[i + 1]);
+      i += 1;
+    } else if (arg === '--screenshot' && argv[i + 1]) {
+      options.screenshotPath = argv[i + 1];
+      i += 1;
+    }
+  }
+
+  return options;
+}
+
+function getValidatedConfig(options = {}) {
   const config = {
     headless: options.headless !== undefined ? options.headless : true,
     timeout: options.timeout || 30000,
@@ -12,14 +38,37 @@ async function openPlaywrightDocs(options = {}) {
     url: options.url || 'https://playwright.dev/'
   };
 
+  if (!Number.isFinite(config.timeout) || config.timeout <= 0) {
+    throw new Error('Invalid timeout: timeout must be a positive number in milliseconds');
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(config.url);
+  } catch {
+    throw new Error('Invalid URL: must be a valid absolute URL, e.g., https://playwright.dev/');
+  }
+
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    throw new Error('Invalid URL: protocol must be http or https');
+  }
+
+  return config;
+}
+
+function ensureScreenshotDirectory(screenshotPath) {
+  const directory = path.dirname(path.resolve(screenshotPath));
+  if (directory && !fs.existsSync(directory)) {
+    fs.mkdirSync(directory, { recursive: true });
+  }
+}
+
+async function openPlaywrightDocs(options = {}) {
+  const config = getValidatedConfig(options);
+
   let browser = null;
   
   try {
-    // Validate URL
-    if (!config.url.startsWith('http')) {
-      throw new Error('Invalid URL: URL must start with http or https');
-    }
-
     // Launch browser in headless mode
     console.log('Launching browser...');
     browser = await chromium.launch({ 
@@ -58,6 +107,7 @@ async function openPlaywrightDocs(options = {}) {
     console.log('✓ Assertion passed: Page title contains "Playwright"');
     
     // Take a screenshot for demo
+    ensureScreenshotDirectory(config.screenshotPath);
     await page.screenshot({ path: config.screenshotPath });
     console.log(`✓ Screenshot saved as ${config.screenshotPath}`);
     
@@ -97,7 +147,14 @@ async function openPlaywrightDocs(options = {}) {
     
     console.log('\n✓ Playwright demo completed successfully!');
     console.log('✓ All assertions passed!');
-    return { success: true, pageTitle: title, headingCount: headings.length };
+    return {
+      success: true,
+      pageTitle: title,
+      headingCount: headings.length,
+      linkCount: links,
+      finalUrl: page.url(),
+      screenshotPath: path.resolve(config.screenshotPath)
+    };
     
   } catch (error) {
     console.error('❌ Error during demo:', error.message);
@@ -117,7 +174,9 @@ module.exports = { openPlaywrightDocs };
 
 // Run the demo if executed directly
 if (require.main === module) {
-  openPlaywrightDocs().catch(error => {
+  const cliOptions = parseCliArgs(process.argv.slice(2));
+
+  openPlaywrightDocs(cliOptions).catch(error => {
     console.error('Fatal error:', error);
     process.exit(1);
   });
