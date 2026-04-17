@@ -2,34 +2,63 @@
 // Purpose: Opens and demonstrates Playwright documentation page
 
 const { chromium } = require('playwright');
+const fs = require('fs');
+const path = require('path');
 
-async function openPlaywrightDocs(options = {}) {
-  // Configuration with defaults
-  const config = {
+function getValidatedConfig(options = {}) {
+  // Validate timeout strictly before applying default so NaN/negative values
+  // from callers are caught early rather than silently replaced.
+  if (options.timeout !== undefined) {
+    if (!Number.isFinite(options.timeout) || options.timeout <= 0) {
+      throw new Error('Invalid timeout: timeout must be a positive finite number in milliseconds');
+    }
+  }
+
+  const rawUrl = options.url || 'https://playwright.dev/';
+
+  // Strict URL validation: reject relative URLs, non-http(s) schemes, and
+  // malformed strings that startsWith('http') would silently accept.
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    throw new Error('Invalid URL: must be a valid absolute URL, e.g., https://playwright.dev/');
+  }
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    throw new Error('Invalid URL: protocol must be http or https');
+  }
+
+  return {
     headless: options.headless !== undefined ? options.headless : true,
     timeout: options.timeout || 30000,
     screenshotPath: options.screenshotPath || 'playwright-docs-screenshot.png',
-    url: options.url || 'https://playwright.dev/'
+    url: rawUrl
   };
+}
+
+function ensureScreenshotDirectory(screenshotPath) {
+  // Create parent directories so the screenshot write never fails on a fresh
+  // environment where the output folder does not yet exist.
+  const directory = path.dirname(path.resolve(screenshotPath));
+  if (directory && !fs.existsSync(directory)) {
+    fs.mkdirSync(directory, { recursive: true });
+  }
+}
+
+async function openPlaywrightDocs(options = {}) {
+  const config = getValidatedConfig(options);
 
   let browser = null;
   
   try {
-    // Validate URL
-    if (!config.url.startsWith('http')) {
-      throw new Error('Invalid URL: URL must start with http or https');
-    }
-
-    // Launch browser in headless mode
+    // Launch browser
     console.log('Launching browser...');
     browser = await chromium.launch({ 
       headless: config.headless 
     });
     
-    // Create a new context with timeout settings
+    // Create a new context and page with timeout settings
     const context = await browser.newContext();
-    
-    // Create a new page with timeout
     const page = await context.newPage();
     page.setDefaultTimeout(config.timeout);
     
@@ -51,13 +80,14 @@ async function openPlaywrightDocs(options = {}) {
     const title = await page.title();
     console.log(`✓ Page loaded successfully. Title: ${title}`);
     
-    // Assertion: Verify page title contains "Playwright"
+    // Assertion 1: Verify page title contains "Playwright"
     if (!title.toLowerCase().includes('playwright')) {
       throw new Error(`Assertion failed: Expected page title to contain "Playwright", but got "${title}"`);
     }
     console.log('✓ Assertion passed: Page title contains "Playwright"');
     
     // Take a screenshot for demo
+    ensureScreenshotDirectory(config.screenshotPath);
     await page.screenshot({ path: config.screenshotPath });
     console.log(`✓ Screenshot saved as ${config.screenshotPath}`);
     
@@ -76,28 +106,47 @@ async function openPlaywrightDocs(options = {}) {
       console.log(`  Main heading: ${headings[0].substring(0, 60)}`);
     }
     
-    // Assertion: Verify at least one h1 heading exists
+    // Assertion 2: Verify at least one h1 heading exists
     if (headings.length === 0) {
       throw new Error('Assertion failed: Expected at least one h1 heading on the page');
     }
     console.log('✓ Assertion passed: At least one h1 heading found on the page');
     
-    // Assertion: Verify sufficient navigation links are present
+    // Assertion 3: Verify sufficient navigation links are present
     if (links < 5) {
       throw new Error(`Assertion failed: Expected at least 5 links on the page, but found only ${links}`);
     }
     console.log(`✓ Assertion passed: Found ${links} links on the page (expected at least 5)`);
     
-    // Assertion: Verify we're on the correct domain
+    // Assertion 4: Verify we're on the correct domain
     const currentUrl = page.url();
     if (!currentUrl.includes('playwright.dev')) {
       throw new Error(`Assertion failed: Expected URL to contain "playwright.dev", but got "${currentUrl}"`);
     }
     console.log(`✓ Assertion passed: Current URL is on correct domain (${currentUrl})`);
+
+    // Assertion 5: Verify the page has a non-empty meta description tag.
+    // A missing or empty meta description indicates an incomplete page load or
+    // a broken deployment and is a strong signal that something went wrong.
+    const metaDescription = await page
+      .locator('meta[name="description"]')
+      .getAttribute('content')
+      .catch(() => null);
+    if (!metaDescription || metaDescription.trim().length === 0) {
+      throw new Error('Assertion failed: Expected page to have a non-empty meta description tag');
+    }
+    console.log(`✓ Assertion passed: Meta description present ("${metaDescription.substring(0, 60)}...")`);
     
     console.log('\n✓ Playwright demo completed successfully!');
     console.log('✓ All assertions passed!');
-    return { success: true, pageTitle: title, headingCount: headings.length };
+    return {
+      success: true,
+      pageTitle: title,
+      headingCount: headings.length,
+      linkCount: links,
+      finalUrl: page.url(),
+      screenshotPath: path.resolve(config.screenshotPath)
+    };
     
   } catch (error) {
     console.error('❌ Error during demo:', error.message);
@@ -122,4 +171,3 @@ if (require.main === module) {
     process.exit(1);
   });
 }
-
