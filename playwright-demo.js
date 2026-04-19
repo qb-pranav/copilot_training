@@ -86,12 +86,13 @@ async function openPlaywrightDocs(options = {}) {
     const getStartedLink = page.getByRole('link', { name: /get started/i }).first();
     await getStartedLink.waitFor({ state: 'visible' });
     const getStartedHref = await getStartedLink.getAttribute('href');
-    if (!getStartedHref || !getStartedHref.includes('/docs/intro')) {
+    const getStartedUrl = getStartedHref ? new URL(getStartedHref, page.url()) : null;
+    if (!getStartedUrl || getStartedUrl.pathname !== '/docs/intro') {
       throw new Error(
         `Assertion failed: Expected "Get started" CTA to link to "/docs/intro", but got "${getStartedHref}"`
       );
     }
-    console.log(`✓ Assertion passed: "Get started" CTA links to ${getStartedHref}`);
+    console.log(`✓ Assertion passed: "Get started" CTA links to ${getStartedUrl.href}`);
     
     // Assertion: Verify sufficient navigation links are present
     if (links < 5) {
@@ -108,7 +109,12 @@ async function openPlaywrightDocs(options = {}) {
     
     console.log('\n✓ Playwright demo completed successfully!');
     console.log('✓ All assertions passed!');
-    return { success: true, pageTitle: title, headingCount: headings.length };
+    return {
+      success: true,
+      pageTitle: title,
+      headingCount: headings.length,
+      getStartedUrl: getStartedUrl.href
+    };
     
   } catch (error) {
     console.error('❌ Error during demo:', error.message);

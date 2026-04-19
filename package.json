@@ -1,0 +1,14 @@
+{
+  "name": "copilot-training",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright demo script for homepage verification.",
+  "main": "playwright-demo.js",
+  "scripts": {
+    "install:browsers": "playwright install chromium",
+    "start": "node playwright-demo.js"
+  },
+  "dependencies": {
+    "playwright": "^1.53.0"
+  }
+}
