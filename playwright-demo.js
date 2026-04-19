@@ -93,6 +93,18 @@ async function openPlaywrightDocs(options = {}) {
       );
     }
     console.log(`✓ Assertion passed: "Get started" CTA links to ${getStartedUrl.href}`);
+
+    // Assertion: Verify the top navigation exposes the docs entry point
+    const docsNavLink = page.getByRole('link', { name: /^docs$/i }).first();
+    await docsNavLink.waitFor({ state: 'visible' });
+    const docsNavHref = await docsNavLink.getAttribute('href');
+    const docsNavUrl = docsNavHref ? new URL(docsNavHref, page.url()) : null;
+    if (!docsNavUrl || docsNavUrl.pathname !== '/docs/intro') {
+      throw new Error(
+        `Assertion failed: Expected "Docs" navigation link to point to "/docs/intro", but got "${docsNavHref}"`
+      );
+    }
+    console.log(`✓ Assertion passed: "Docs" navigation link points to ${docsNavUrl.href}`);
     
     // Assertion: Verify sufficient navigation links are present
     if (links < 5) {
