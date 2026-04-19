@@ -82,6 +82,14 @@ async function openPlaywrightDocs(options = {}) {
     }
     console.log('✓ Assertion passed: At least one h1 heading found on the page');
 
+    // Assertion: Verify the hero heading clearly identifies the Playwright homepage
+    if (!headings[0].toLowerCase().includes('playwright')) {
+      throw new Error(
+        `Assertion failed: Expected the main heading to mention "Playwright", but got "${headings[0]}"`
+      );
+    }
+    console.log('✓ Assertion passed: Main heading mentions "Playwright"');
+
     // Assertion: Verify the homepage primary CTA is visible and points to the intro docs
     const getStartedLink = page.getByRole('link', { name: /get started/i }).first();
     await getStartedLink.waitFor({ state: 'visible' });
