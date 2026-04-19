@@ -81,6 +81,17 @@ async function openPlaywrightDocs(options = {}) {
       throw new Error('Assertion failed: Expected at least one h1 heading on the page');
     }
     console.log('✓ Assertion passed: At least one h1 heading found on the page');
+
+    // Assertion: Verify the homepage primary CTA is visible and points to the intro docs
+    const getStartedLink = page.getByRole('link', { name: /get started/i }).first();
+    await getStartedLink.waitFor({ state: 'visible' });
+    const getStartedHref = await getStartedLink.getAttribute('href');
+    if (!getStartedHref || !getStartedHref.includes('/docs/intro')) {
+      throw new Error(
+        `Assertion failed: Expected "Get started" CTA to link to "/docs/intro", but got "${getStartedHref}"`
+      );
+    }
+    console.log(`✓ Assertion passed: "Get started" CTA links to ${getStartedHref}`);
     
     // Assertion: Verify sufficient navigation links are present
     if (links < 5) {
