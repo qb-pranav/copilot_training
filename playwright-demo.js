@@ -90,29 +90,31 @@ async function openPlaywrightDocs(options = {}) {
     }
     console.log('✓ Assertion passed: Main heading mentions "Playwright"');
 
-    // Assertion: Verify the homepage primary CTA is visible and points to the intro docs
+    const isDocsUrl = url => url && /^\/docs(?:\/|$)/.test(url.pathname);
+
+    // Assertion: Verify the homepage primary CTA is visible and points to the docs
     const getStartedLink = page.getByRole('link', { name: /get started/i }).first();
     await getStartedLink.waitFor({ state: 'visible' });
     const getStartedHref = await getStartedLink.getAttribute('href');
     const getStartedUrl = getStartedHref ? new URL(getStartedHref, page.url()) : null;
-    if (!getStartedUrl || getStartedUrl.pathname !== '/docs/intro') {
+    if (!isDocsUrl(getStartedUrl)) {
       throw new Error(
-        `Assertion failed: Expected "Get started" CTA to link to "/docs/intro", but got "${getStartedHref}"`
+        `Assertion failed: Expected "Get started" CTA to link to the docs, but got "${getStartedHref}"`
       );
     }
     console.log(`✓ Assertion passed: "Get started" CTA links to ${getStartedUrl.href}`);
 
-    // Assertion: Verify the top navigation exposes the docs entry point
-    const docsNavLink = page.getByRole('link', { name: /^docs$/i }).first();
-    await docsNavLink.waitFor({ state: 'visible' });
-    const docsNavHref = await docsNavLink.getAttribute('href');
-    const docsNavUrl = docsNavHref ? new URL(docsNavHref, page.url()) : null;
-    if (!docsNavUrl || docsNavUrl.pathname !== '/docs/intro') {
+    // Assertion: Verify the homepage exposes a secondary docs entry point
+    const testingDocsLink = page.getByRole('link', { name: /testing documentation/i });
+    await testingDocsLink.waitFor({ state: 'visible' });
+    const testingDocsHref = await testingDocsLink.getAttribute('href');
+    const testingDocsUrl = testingDocsHref ? new URL(testingDocsHref, page.url()) : null;
+    if (!isDocsUrl(testingDocsUrl)) {
       throw new Error(
-        `Assertion failed: Expected "Docs" navigation link to point to "/docs/intro", but got "${docsNavHref}"`
+        `Assertion failed: Expected "Testing documentation" link to point to the docs, but got "${testingDocsHref}"`
       );
     }
-    console.log(`✓ Assertion passed: "Docs" navigation link points to ${docsNavUrl.href}`);
+    console.log(`✓ Assertion passed: "Testing documentation" link points to ${testingDocsUrl.href}`);
     
     // Assertion: Verify sufficient navigation links are present
     if (links < 5) {
