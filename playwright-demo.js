@@ -65,7 +65,7 @@ async function openPlaywrightDocs(options = {}) {
     console.log('Waiting for main content...');
     await page.waitForLoadState('domcontentloaded');
 
-    const getStartedLink = page.getByRole('link', { name: 'Get started' });
+    const getStartedLink = page.getByRole('banner').getByRole('link', { name: 'Get started' });
     const getStartedHref = await getStartedLink.getAttribute('href');
     
     // Get page content statistics
