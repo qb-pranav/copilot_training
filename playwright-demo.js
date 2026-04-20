@@ -56,6 +56,15 @@ async function openPlaywrightDocs(options = {}) {
       throw new Error(`Assertion failed: Expected page title to contain "Playwright", but got "${title}"`);
     }
     console.log('✓ Assertion passed: Page title contains "Playwright"');
+
+    // Assertion: Verify the homepage primary CTA is present and links to the intro docs
+    const getStartedLink = page.getByRole('link', { name: 'Get started' }).first();
+    await getStartedLink.waitFor({ state: 'visible' });
+    const getStartedHref = await getStartedLink.getAttribute('href');
+    if (!getStartedHref || !getStartedHref.includes('/docs/intro')) {
+      throw new Error(`Assertion failed: Expected "Get started" link to point to "/docs/intro", but got "${getStartedHref}"`);
+    }
+    console.log(`✓ Assertion passed: "Get started" CTA points to ${getStartedHref}`);
     
     // Take a screenshot for demo
     await page.screenshot({ path: config.screenshotPath });
