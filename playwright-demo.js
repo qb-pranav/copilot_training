@@ -57,11 +57,19 @@ async function openPlaywrightDocs(options = {}) {
     }
     console.log('✓ Assertion passed: Page title contains "Playwright"');
 
+    // Assertion: Verify the homepage hero heading matches the docs landing page
+    const mainHeading = page.getByRole('heading', {
+      level: 1,
+      name: /Playwright enables reliable web automation/i
+    });
+    await mainHeading.waitFor({ state: 'visible' });
+    console.log('✓ Assertion passed: Homepage hero heading is visible');
+
     // Assertion: Verify the homepage primary CTA is present and links to the intro docs
     const getStartedLink = page.getByRole('link', { name: 'Get started' }).first();
     await getStartedLink.waitFor({ state: 'visible' });
     const getStartedHref = await getStartedLink.getAttribute('href');
-    if (!getStartedHref || !getStartedHref.includes('/docs/intro')) {
+    if (!getStartedHref || !getStartedHref.startsWith('/docs/intro')) {
       throw new Error(`Assertion failed: Expected "Get started" link to point to "/docs/intro", but got "${getStartedHref}"`);
     }
     console.log(`✓ Assertion passed: "Get started" CTA points to ${getStartedHref}`);
